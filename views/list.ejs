@@ -1,0 +1,122 @@
+<html>
+<h1>Hi, <%=name%></h1>
+<p>Total <%=num%> data in the list</p>
+<table border="1">
+    <tr>
+        <th>UserId</th>
+        <th>Name</th>
+        <th>Gender</th>
+        <th>Age</th>
+        <th>Medicine Required</th>
+        <th>Weight(kg)</th>
+        <th>Height(cm)</th>
+    </tr>
+    <% for (let i=0; i < data.length; i++) { %>
+        <tr>
+            <td>
+                <%= data[i].userId%>
+            </td>
+            <td>
+                <%= data[i].name%>
+            </td>
+            <td>
+                <%= data[i].gender%>
+            </td>
+            <td>
+                <%= data[i].age%>
+            </td>
+            <td>
+                <%= data[i].medicine%>
+            </td>
+            <td>
+                <%= data[i].weight%>
+            </td>
+            <td>
+                <%= data[i].height%>
+            </td>
+
+        </tr>
+        <% } %>
+</table>
+<a href="/insert">Insert</a>
+<a href="/update">Update</a>
+<a href="/delete">Delete</a>
+<br>
+<a href="/logout" id="logout">Logout</a>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f4f7fa;
+        margin: 40px;
+        color: #333;
+    }
+
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th,
+    td {
+        padding: 15px 20px;
+        text-align: center;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+        background-color: #4a90e2;
+        color: white;
+        text-transform: uppercase;
+        font-size: 14px;
+        letter-spacing: 1px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f9fbfd;
+    }
+
+    tr:hover {
+        background-color: #c8dafc;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    a {
+        display: inline-block;
+        margin-top: 20px;
+        text-decoration: none;
+        font-size: 16px;
+        color: #4a90e2;
+        border: 2px solid #4a90e2;
+        padding: 8px 15px;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+
+    a:hover {
+        background-color: #4a90e2;
+        color: white;
+    }
+    #logout{
+        color: #e24a4a; 
+        border: 2px solid #e24a4a
+    }
+    #logout:hover {
+        background-color: #e24a4a;
+        color: white;
+    }
+</style>
+
+</html>
