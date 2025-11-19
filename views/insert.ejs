@@ -1,0 +1,79 @@
+<html>
+    <head>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f9f9f9;
+    margin: 0;
+    padding: 24px;
+}
+h1 {
+    color: #0d6efd;
+    text-align: center;
+}
+form {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 24px;
+    max-width: 420px;
+    margin: auto;
+}
+label {
+    font-weight: bold;
+    color: #313131;
+    margin-top: 12px;
+}
+input[type="text"] {
+    width: 90%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin: 6px 0 12px 0;
+}
+button, input[type="submit"] {
+    padding: 8px 16px;
+    border-radius: 5px;
+    border: none;
+    background-color: #0d6efd;
+    color: #fff;
+    font-size: 1em;
+    cursor: pointer;
+    margin-top: 12px;
+}
+button:hover, input[type="submit"]:hover {
+    background-color: #0b5ed7;
+}
+#medicines input[type="text"] {
+    margin-bottom: 8px;
+}
+</style>
+</head>
+
+<h1>Insert</h1>
+<form action="/insert" method="post">
+    UserId: <br><input type="text" name="userId"><br>
+    Name: <br><input type="text" name="name"><br>
+    Age: <br><input type="text" name="age"><br>
+    Gender: <br><input type="text" name="gender"><br>
+    Weight(kg): <br><input type="text" name="weight"><br>
+    Height(cm): <br><input type="text" name="height"><br>
+    <div id="medicines">
+        <label>Medicine:</label><br>
+        <input type="text" name="medicine"><br>
+    </div>
+    <button type="button" id="addMed">Add another medicine</button>
+    <input type="submit" value="Submit">
+</form>
+<script>
+    document.getElementById('addMed').addEventListener('click', function () {
+        const div = document.getElementById('medicines');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = 'medicine';
+        div.appendChild(input);
+        div.appendChild(document.createElement('br'));
+    });
+</script>
+
+</html>

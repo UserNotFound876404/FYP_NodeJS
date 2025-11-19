@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Results</title>
+</head>
+
+<body>
+  <h1>Results</h1>
+  
+
+  <% if (results && results.length) { %>
+    <table border="1" cellpadding="4" cellspacing="0">
+      <tr>
+        <th>UserId</th>
+        <th>Name</th>
+        <th>Gender</th>
+        <th>Age</th>
+        <th>Medicine</th>
+        <th>Weight</th>
+        <th>Height</th>
+      </tr>
+      <% results.forEach(function(u){ %>
+        <tr>
+          <td>
+            <%= u.userId %>
+          </td>
+          <td>
+            <%= u.name %>
+          </td>
+          <td>
+            <%= u.gender %>
+          </td>
+          <td>
+            <%= u.age %>
+          </td>
+          <td>
+            <%= Array.isArray(u.medicine) ? u.medicine.join(', ') : u.medicine %>
+          </td>
+          <td><%= u.weight %></td>
+          <td><%= u.height %></td>
+          
+        </tr>
+      <% }) %>
+    </table>
+  <% } else { %>
+    <p>No results found.</p>
+  <% } %>
+
+  <a href="/search">Modify search</a>
+  <br>
+  <a href="/">Home</a>
+</body>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f4f7fa;
+        margin: 40px;
+        color: #333;
+    }
+
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th,
+    td {
+        padding: 15px 20px;
+        text-align: center;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+        background-color: #4a90e2;
+        color: white;
+        text-transform: uppercase;
+        font-size: 14px;
+        letter-spacing: 1px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f9fbfd;
+    }
+
+    tr:hover {
+        background-color: #c8dafc;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    a {
+        display: inline-block;
+        margin-top: 20px;
+        text-decoration: none;
+        font-size: 16px;
+        color: #4a90e2;
+        border: 2px solid #4a90e2;
+        padding: 8px 15px;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+
+    a:hover {
+        background-color: #4a90e2;
+        color: white;
+    }
+    #logout{
+        color: #e24a4a; 
+        border: 2px solid #e24a4a
+    }
+    #logout:hover {
+        background-color: #e24a4a;
+        color: white;
+    }
+</style>
+</html>
