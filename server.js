@@ -34,6 +34,24 @@ app.use(session({
     keys: [SECRETKEY]
 }));
 
+const searchDatabase = async (db, query) => {
+    try {
+        const collection = db.collection(collectionName);
+
+        // Ensure query is an object; if empty, use {}
+        const q = (query && typeof query === 'object' && Object.keys(query).length) ? query : {};
+
+        // Use the provided query in find()
+        const cursor = await collection.find(q);
+
+        const results = await cursor.toArray();
+        return results;
+    } catch (err) {
+        console.error('searchDatabase error:', err);
+        throw err;
+    }
+};
+
 
 //find mongodb
 const findDatabase = async (db) => {
@@ -52,7 +70,7 @@ const insertDatabase = async (db, object) => {
 //update mongodb
 const updateDatabase = async (db, oldUserId, newName, age, weight, height, meds, userId, gender) => {
     var collection = db.collection(collectionName);
-    collection.updateMany({ 'userId': oldUserId }, { $set: { 'name': newName, 'weight': weight, 'height': height, 'medicine': meds, 'userId': userId, 'age': age ,'gender':gender} });
+    collection.updateMany({ 'userId': oldUserId }, { $set: { 'name': newName, 'weight': weight, 'height': height, 'medicine': meds, 'userId': userId, 'age': age, 'gender': gender.toUpperCase() } });
 }
 
 //delete mongodb
@@ -77,13 +95,13 @@ app.get('/login', (req, res, next) => {
     res.status(200).render('login');
 });
 
-app.get('/signup',(req,res,next)=>{
+app.get('/signup', (req, res, next) => {
     res.status(200).render('signup');
 })
-app.post('/signup',(req,res,next)=>{
+app.post('/signup', (req, res, next) => {
     let newAccount = {};
-    newAccount['name']= req.body.name;
-    newAccount['password']=req.body.password;
+    newAccount['name'] = req.body.name;
+    newAccount['password'] = req.body.password;
     users.push(newAccount);
     res.redirect("login");
 });
@@ -95,14 +113,19 @@ app.get('/insert', (req, res, next) => {
 app.post("/insert", async (req, res, next) => {
     const db = client.db(dbName);
     try {
+        let meds = req.body.medicine;
+        if (meds == null) meds = [];           
+        else if (!Array.isArray(meds)) meds = [meds]; 
+
+        meds = meds.map(m => String(m).trim()).filter(m => m !== '');
         let newObject = {};
         newObject['userId'] = req.body.userId;
         newObject['name'] = req.body.name;
         newObject['age'] = req.body.age;
         newObject['weight'] = req.body.weight;
         newObject['height'] = req.body.height;
-        newObject['medicine'] = req.body.medicine;
-        newObject['gender'] = req.body.gender;
+        newObject['medicine'] = meds;
+        newObject['gender'] = req.body.gender.toUpperCase();
         insertDatabase(db, newObject);
         res.status(200).redirect("success"); // sends JSON and ends response
     } catch (err) {
@@ -118,7 +141,7 @@ app.get('/update', (req, res, next) => {
 app.post("/update", async (req, res, next) => {
     const db = client.db(dbName);
     try {
-        updateDatabase(db, req.body.olduserId, req.body.name, req.body.age, req.body.weight, req.body.height, req.body.medicine, req.body.userId,req.body.gender);
+        updateDatabase(db, req.body.olduserId, req.body.name, req.body.age, req.body.weight, req.body.height, req.body.medicine, req.body.userId, req.body.gender.toUpperCase());
         res.status(200).redirect("success");
     } catch (err) {
         console.error("Error fetching database:", err);
@@ -130,17 +153,56 @@ app.post("/update", async (req, res, next) => {
 app.get('/delete', (req, res, next) => {
     res.status(200).render('delete');
 });
-app.post('/delete',(req,res,next)=>{
-    const db = client.db(dbName); 
-    try{
-        deleteDatabase(db,req.body.userId);
+app.post('/delete', (req, res, next) => {
+    const db = client.db(dbName);
+    try {
+        deleteDatabase(db, req.body.userId);
         res.status(200).redirect("success");
     }
-    catch (err){
+    catch (err) {
         console.error("Error fetching database:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
+// Search form (GET)
+// render simple search form
+app.get('/search', (req, res, next) => {
+    res.status(200).render('search'); // create views/search.ejs below
+});
+
+// perform search using query params (GET /search/results?name=...&userId=...)
+app.get('/search/results', async (req, res, next) => {
+    const db = client.db(dbName);
+    const collection = db.collection('users'); // change if your collection name differs
+
+    try {
+        const q = {
+            userId: req.query.userId,
+            name: req.query.name,
+            age: req.query.age,
+            weight: req.query.weight,
+            height: req.query.height,
+            medicine: req.query.medicine,
+            gender: req.query.gender.toUpperCase()
+        };
+
+        Object.keys(q).forEach((k) => {
+            const v = q[k];
+            if (v == null || String(v).trim() === '') {
+                delete q[k];
+            }
+        });
+
+        const results = await searchDatabase(db, q);
+        res.status(200).render('results', { results, query: req.query });
+    } catch (err) {
+        console.error('Search error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 
 app.get('/success', (req, res, next) => {
     res.status(200).render('success');
@@ -150,7 +212,7 @@ app.get('/fail', (req, res) => {
     res.status(200).render('fail');
 })
 
-app.get('/about',(req,res,next)=>{
+app.get('/about', (req, res, next) => {
     res.status(200).render("about");
 })
 
@@ -210,7 +272,7 @@ app.post("/api", async (req, res, next) => {
         newObject['weight'] = req.body.weight;
         newObject['height'] = req.body.height;
         newObject['medicine'] = req.body.medicine;
-        newObject['gender'] = req.body.gender;
+        newObject['gender'] = req.body.gender.toUpperCase();
         const db = client.db(dbName);
         await insertDatabase(db, newObject);
         res.status(200).send("Data inserted"); // sends JSON and ends response
