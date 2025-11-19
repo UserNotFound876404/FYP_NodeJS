@@ -14,6 +14,7 @@ app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use("/", express.static('/views'));
 
+
 app.use((req, res, next) => {
     console.log("request body: ", req.body);
     console.log(req.method + ' ' + req.url + ' was requested at ' + Date(Date.now()).toString());
@@ -88,7 +89,7 @@ app.get("/home", (req, res, next) => {
 })
 
 app.get('/help', (req, res, next) => {
-    res.send('Help page');
+    res.render('help');
 });
 
 app.get('/login', (req, res, next) => {
