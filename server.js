@@ -215,7 +215,7 @@ app.get('/fail', (req, res) => {
 app.get('/about', (req, res, next) => {
     const team = [
         	{ name: 'Chau Yue Ting', role: 'Project Leader' },
-        	{ name: 'Chung Wang Lin', role: 'Project member' },
+        	{ name: 'Chung Wing Nin', role: 'Project member' },
         	{ name: 'Yam Kok Hon', role: 'Project member' }
     ];
     res.render('about', { team });
@@ -358,3 +358,4 @@ app.get("/api/search/userId/:userId", async (req, res, next) => {
 
 //port
 app.listen(process.env.PORT || 8099);
+
