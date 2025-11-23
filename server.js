@@ -295,11 +295,10 @@ app.put("/api/userId/:userId", async (req, res, next) => {
         const database = await findDatabase(db);
         database.forEach((object) => {
             if (object.userId == req.params.userId) {
-                updateDatabase(db, req.params.userId, req.body.name, req.body.age, req.body.weight, req.body.height, req.body.medicine, req.body.userId, req.body.gender);
+                await updateDatabase(db, req.params.userId, req.body.name, req.body.age, req.body.weight, req.body.height, req.body.medicine, req.body.userId, req.body.gender);
             }
         })
-        const result = await findDatabase(db);
-        res.status(200).type("json").json(result);
+         res.status(200).send("Data updated");
     } catch (err) {
         console.error("Error fetching database:", err);
         res.status(500).json({ error: "Internal server error" });
@@ -358,4 +357,5 @@ app.get("/api/search/userId/:userId", async (req, res, next) => {
 
 //port
 app.listen(process.env.PORT || 8099);
+
 
