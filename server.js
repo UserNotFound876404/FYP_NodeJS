@@ -1,6 +1,7 @@
 const express = require('express');
 const { MongoClient, ServerApiVersion, HostAddress } = require('mongodb');
 const app = express();
+const url = "mongodb+srv://cloud381:cloud381@cluster0.bjmfioi.mongodb.net/?appName=Cluster0";
 const dbName = "fyp";
 const collectionName = "users";
 const client = new MongoClient(url);
@@ -21,18 +22,18 @@ app.use((req, res, next) => {
 })
 
 
-const users = new Array(
-    { name: 'admin', password: 'admin' }
-);
+// const users = new Array(
+//     { name: 'admin', password: 'admin' }
+// );
 
-const SECRETKEY = '381Project';
+// const SECRETKEY = '381Project';
 
 //cookies
-const session = require('cookie-session');
-app.use(session({
-    name: 'loginSession',
-    keys: [SECRETKEY]
-}));
+// const session = require('cookie-session');
+// app.use(session({
+//     name: 'loginSession',
+//     keys: [SECRETKEY]
+// }));
 
 const searchDatabase = async (db, query) => {
     try {
@@ -171,43 +172,71 @@ app.post("/createAccount", async (req, res, next) => {
 
 //update
 //curl -X PUT -d "name=demo&age=20&userId=11111&weight=50&height=177&medicine=meds0&medicine=meds4&medicine=meds2&gender=Male" "localhost:8099/api/userId/22222"
-app.put("/api/userId/:userId", async (req, res, next) => {
-    try {
-        const db = client.db(dbName);
-        const database = await findDatabase(db);
-        database.forEach((object) => {
-            if (object.userId == req.params.userId) {
-                updateDatabase(db, req.params.userId, req.body.name, req.body.age, req.body.weight, req.body.height, req.body.medicine, req.body.userId, req.body.gender);
-            }
-        })
-        res.status(200).send("Data updated");
-    } catch (err) {
-        console.error("Error fetching database:", err);
-        res.status(500).json({ error: "Internal server error" });
+// app.put("/api/userId/:userId", async (req, res, next) => {
+//     try {
+//         const db = client.db(dbName);
+//         const database = await findDatabase(db);
+//         database.forEach((object) => {
+//             if (object.userId == req.params.userId) {
+//                 updateDatabase(db, req.params.userId, req.body.name, req.body.age, req.body.weight, req.body.height, req.body.medicine, req.body.userId, req.body.gender);
+//             }
+//         })
+//         res.status(200).send("Data updated");
+//     } catch (err) {
+//         console.error("Error fetching database:", err);
+//         res.status(500).json({ error: "Internal server error" });
 
-    }
-})
+//     }
+// })
 
 //delete
 //curl -X DELETE "localhost:8099/api/delete/userId/11111"
-app.delete("/api/delete/userId/:userId", async (req, res, next) => {
-    try {
-        const db = client.db(dbName);
-        const database = await findDatabase(db);
-        database.forEach((object) => {
-            if (object.userId == req.params.userId) {
-                deleteDatabase(db, req.params.userId);
-            }
-        })
-        res.status(200).type("json").send("Data deleted");
-    } catch (err) {
-        console.error("Error fetching database:", err);
-        res.status(500).json({ error: "Internal server error" });
+// app.delete("/api/delete/userId/:userId", async (req, res, next) => {
+//     try {
+//         const db = client.db(dbName);
+//         const database = await findDatabase(db);
+//         database.forEach((object) => {
+//             if (object.userId == req.params.userId) {
+//                 deleteDatabase(db, req.params.userId);
+//             }
+//         })
+//         res.status(200).type("json").send("Data deleted");
+//     } catch (err) {
+//         console.error("Error fetching database:", err);
+//         res.status(500).json({ error: "Internal server error" });
 
-    }
-})
+//     }
+// })
 
 //search
+//curl "localhost:8099/api/search/userId/12345"
+// app.get("/api/search/userId/:userId", async (req, res, next) => {
+//         const db = client.db(dbName);
+//         try {
+//             const q = {
+//                 userId: req.params.userId,
+//                 // name: req.params.name,
+//                 // age: req.params.age,
+//                 // weight: req.params.weight,
+//                 // height: req.params.height,
+//                 // medicine: req.params.medicine,
+//                 // gender: req.params.gender.toUpperCase()
+//             };
+
+//             Object.keys(q).forEach((k) => {
+//                 const v = q[k];
+//                 if (v == null || String(v).trim() === '') {
+//                     delete q[k];
+//                 }
+//             });
+
+//             const results = await searchDatabase(db, q);
+//             res.status(200).type("json").send(results);
+//         } catch (err) {
+//             console.error('Search error:', err);
+//             res.status(500).json({ error: 'Internal server error' });
+//         }
+// });
 
 //port
 app.listen(process.env.PORT || 8099);
