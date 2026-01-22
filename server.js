@@ -190,6 +190,42 @@ app.post("/createAccount", async (req, res, next) => {
 //     }
 // })
 
+//update medicine 
+app.post("/api/users/:email/medicine", async (req, res) => {  // :email instead of :userId
+    try {
+        const db = client.db(dbName);
+        const email = req.params.email;  // "tom@example.com"
+        
+        const newMedicine = req.body;
+        const database = await findDatabase(db);
+        let userFound = false;
+        
+        database.forEach(async (object) => {
+            if (object.email == email) {  // Match by email
+                userFound = true;
+                await db.collection("users").updateOne(
+                    { email: email },  // Query by email
+                    { 
+                        $push: { medicine: newMedicine },
+                        $currentDate: { lastUpdate: true }
+                    }
+                );
+            }
+        });
+        
+        if (!userFound) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        
+        res.json({ message: "Medicine inserted successfully" });
+    } catch (err) {
+        console.error("Error:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+
 //delete
 //curl -X DELETE "localhost:8099/api/delete/userId/11111"
 // app.delete("/api/delete/userId/:userId", async (req, res, next) => {
