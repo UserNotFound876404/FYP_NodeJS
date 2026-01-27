@@ -158,7 +158,7 @@ app.post("/createAccount", async (req, res, next) => {
             streak: 0,         
             medicine: [],
             gender: req.body.gender.toUpperCase(),
-            lastUpdate: new Date().toISOString()  // Current timestamp (ISO format)
+            lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })  // Current timestamp (ISO format)
         };
         
         const db = client.db(dbName);
@@ -277,6 +277,7 @@ app.post("/api/users/:email/medicine", async (req, res) => {  // :email instead 
 
 //port
 app.listen(process.env.PORT || 8099);
+
 
 
 
