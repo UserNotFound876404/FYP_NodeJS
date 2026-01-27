@@ -153,10 +153,10 @@ app.post("/createAccount", async (req, res, next) => {
             name: req.body.name,
             email: req.body.email,
             password: req.body.password,     // Hash before saving!
-            telephone: req.body.telephone,   
+            //telephone: req.body.telephone,   
             birth: req.body.birth,           // YYYY-MM-DD
-            streak: req.body.streak,         
-            medicine: req.body.medicine,
+            streak: 0,         
+            medicine: [],
             gender: req.body.gender.toUpperCase(),
             lastUpdate: new Date().toISOString()  // Current timestamp (ISO format)
         };
@@ -277,3 +277,4 @@ app.post("/api/users/:email/medicine", async (req, res) => {  // :email instead 
 
 //port
 app.listen(process.env.PORT || 8099);
+
