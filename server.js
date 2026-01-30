@@ -63,8 +63,14 @@ const findDatabase = async (db) => {
 
 //insert mongodb
 const insertDatabase = async (db, object) => {
-    var collection = db.collection(collectionName);
-    collection.insertOne(object);
+    try{
+        var collection = db.collection(collectionName);
+        const result = await collection.insertOne(object);  // Add await
+        return result;  
+    }catch (err) {
+        console.error("insertDatabase error:", err);  // Log for debugging
+        throw err;  // Re-throw so caller can handle (e.g., return 500/409)
+    }
 }
 
 //update mongodb
@@ -292,6 +298,7 @@ app.post("/api/users/:email/medicine", async (req, res) => {  // :email instead 
 
 //port
 app.listen(process.env.PORT || 8099);
+
 
 
 
