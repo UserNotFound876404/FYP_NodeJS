@@ -226,8 +226,10 @@ app.post("/api/users/:email/medicine", async (req, res) => {  // :email instead 
                 await db.collection("users").updateOne(
                     { email: email },  // Query by email
                     { 
-                        $push: { medicine: newMedicine },
-                        $currentDate: { lastUpdate: true }
+                       $push: { medicine: newMedicine },
+                        $set: { 
+                            lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
+                        }
                     }
                 );
             }
@@ -297,3 +299,4 @@ app.post("/api/users/:email/medicine", async (req, res) => {  // :email instead 
 
 //port
 app.listen(process.env.PORT || 8099);
+
