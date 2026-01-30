@@ -148,36 +148,30 @@ app.post("/login", async (req, res) => {
 });
 
 //retrieve data by id
-app.get("/medicine/:userId", async (req, res) => {
+app.get("/data/:email", async (req, res) => {
     try {
-        const { userId } = req.params;
+        const { email } = req.params;
         
         // Validation
-        if (!userId) {
-            return res.status(400).json({ error: "userId required" });
+        if (!email || !email.includes('@')) {
+            return res.status(400).json({ error: "Valid email required" });
         }
 
         const db = client.db(dbName);
         
-        // ✅ FIX: Convert string to ObjectId for MongoDB query
-        let objectId;
-        try {
-            // Convert hex string to ObjectId (handles Object('xxx') format)
-            objectId = new require('mongodb').ObjectId(userId);
-        } catch (e) {
-            return res.status(400).json({ error: "Invalid userId format" });
-        }
+        // ✅ Find user by email (EXACTLY like your login endpoint)
+        const users = await searchDatabase(db, { email: email.toLowerCase() });
+        const user = users[0]; // searchDatabase returns array
         
-        // Find user by ObjectId
-        const users = await searchDatabase(db, { _id: objectId });
-        const user = users[0];
-        
+        // Check if user exists
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        // Remove password from response
+        // Remove password from response (same as login)
         const { password: _, ...userData } = user;
+        
+        // Update lastUpdate
         userData.lastUpdate = new Date().toISOString();
         
         res.status(200).json({ 
@@ -190,6 +184,7 @@ app.get("/medicine/:userId", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
 
 
 //create account
@@ -376,4 +371,5 @@ app.delete("/medicine/:email", async (req, res) => {
 
 //port
 app.listen(process.env.PORT || 8099);
+
 
