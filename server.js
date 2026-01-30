@@ -7,7 +7,6 @@ const collectionName = "users";
 const client = new MongoClient(url);
 const bodyParser = require('body-parser');
 
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -21,7 +20,6 @@ app.use((req, res, next) => {
     console.log(req.method + ' ' + req.url + ' was requested at ' + Date(Date.now()).toString());
     next();
 })
-
 
 // const users = new Array(
 //     { name: 'admin', password: 'admin' }
@@ -52,7 +50,6 @@ const searchDatabase = async (db, query) => {
     }
 };
 
-
 //find mongodb
 const findDatabase = async (db) => {
     var collection = db.collection(collectionName);
@@ -79,9 +76,9 @@ const updateDatabase = async (db, oldUserId, newName, age, weight, height, meds,
 }
 
 //delete mongodb
-const deleteDatabase = async (db, userId) => {
+const deleteDatabase = async (db, medicineName) => {
     var collection = db.collection(collectionName);
-    collection.deleteOne({ "userId": userId });
+    collection.deleteOne({ "name": medicineName });
 }
 
 app.get('/', (req, res, next) => {
@@ -150,6 +147,45 @@ app.post("/login", async (req, res) => {
     }
 });
 
+//retrieve data by id
+app.get("/medicine/:userId", async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        // Validation
+        if (!userId) {
+            return res.status(400).json({ error: "userId required" });
+        }
+
+        const db = client.db(dbName);
+        
+        // Find user by _id (using your searchDatabase)
+        const users = await searchDatabase(db, { _id: userId });
+        const user = users[0]; // searchDatabase returns array
+        
+        // Check if user exists
+        if (!user) {
+            return res.status(401).json({ error: "User not found" });
+        }
+
+        // Remove password from response
+        const { password: _, ...userData } = user;
+        
+        // Update lastUpdate on profile fetch
+        userData.lastUpdate = new Date().toISOString();
+        
+        res.status(200).json({ 
+            message: "Profile fetched successfully",
+            user: userData 
+        });
+
+    } catch (err) {
+        console.error("Medicine/Profile fetch error:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
 //create account
 //curl -X POST -H "Content-Type: application/json" -d "{\"name\":\"Tom\",\"gender\":\"male\",\"email\":\"Tom@example.com\",\"password\":\"secret123\",\"telephone\":\"+85212345678\",\"birth\":\"1990-01-01\",\"streak\":0,\"medicine\":[{\"name\":\"meds0\",\"dosage\":\"10mg\",\"frequencyCount\":2,\"frequencyUnit\":\"daily\",\"time\":[\"08:00\",\"20:00\"]}]}" http://localhost:8099/createAccount
 app.post("/createAccount", async (req, res, next) => {
@@ -211,14 +247,13 @@ app.post("/createAccount", async (req, res, next) => {
 // })
 
 //update medicine 
-app.post("/api/users/:email/medicine", async (req, res) => {
+app.post("/medicine/:email", async (req, res) => {
     try {
         const db = client.db(dbName);
         const email = req.params.email;
 
         const newMedicine = req.body;
 
-        // Direct MongoDB query - no race condition
         const user = await db.collection("users").findOne({ email: email });
         if (!user) {
             return res.status(404).json({ error: "User not found" });
@@ -241,6 +276,46 @@ app.post("/api/users/:email/medicine", async (req, res) => {
     }
 });
 
+//delete the medicine object using the name attribute in mongodb
+app.delete("/medicine/:email", async (req, res) => {
+    try {
+        const db = client.db(dbName);
+        const email = req.params.email;
+        const { medicineName } = req.body;  // medicineName from body (secure)
+        
+        if (!medicineName) {
+            return res.status(400).json({ error: "medicineName required in body" });
+        }
+
+        const user = await db.collection("users").findOne({ email: email });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Delete medicine by name using $pull (no insert logic)
+        const result = await db.collection("users").updateOne(
+            { email: email },
+            { 
+                $pull: { medicine: { name: medicineName } }, 
+                $set: { 
+                    lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
+                }
+            }
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(404).json({ error: "Medicine not found or already deleted" });
+        }
+
+        res.json({ 
+            message: "Medicine deleted successfully",
+            deletedCount: result.modifiedCount 
+        });
+    } catch (err) {
+        console.error("Error:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 
 
@@ -295,5 +370,3 @@ app.post("/api/users/:email/medicine", async (req, res) => {
 
 //port
 app.listen(process.env.PORT || 8099);
-
-
