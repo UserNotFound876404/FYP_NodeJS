@@ -21,11 +21,8 @@ app.use((req, res, next) => {
     next();
 })
 
-// const users = new Array(
-//     { name: 'admin', password: 'admin' }
-// );
 
-// const SECRETKEY = '381Project';
+// const SECRETKEY = 'secretkey';
 
 //cookies
 // const session = require('cookie-session');
@@ -368,6 +365,7 @@ app.delete("/medicine/:email", async (req, res) => {
 
 //port
 app.listen(process.env.PORT || 8099);
+
 
 
 
