@@ -12,7 +12,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
-app.use("/", express.static('/views'));
 
 
 app.use((req, res, next) => {
@@ -127,15 +126,12 @@ app.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // Remove password from response
-        const { password: _, ...userData } = user;
-        
-        // Update lastUpdate on login
-        userData.lastUpdate = new Date().toISOString();
+        // // Remove password from response
+        // const { password: _, ...userData } = user;
         
         res.status(200).json({ 
             message: "Login successful",
-            user: userData 
+            user: user
         });
 
     } catch (err) {
@@ -364,7 +360,7 @@ app.delete("/medicine/:email", async (req, res) => {
 // });
 
 //port
-app.listen(process.env.PORT || 8099);
+app.listen(process.env.PORT);
 
 
 
