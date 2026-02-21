@@ -46,6 +46,33 @@ const searchDatabase = async (db, query) => {
     }
 };
 
+const updateLoginTime = async (db, email) => {
+    try {
+        const collection = db.collection(collectionName);
+        const updateTime = new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' });
+        
+        const result = await collection.updateOne(
+            { email: email.toLowerCase() },
+            { 
+                $set: { 
+                    lastLogin: updateTime
+                }
+            }
+        );
+        
+        if (result.modifiedCount === 0) {
+            throw new Error('User not found for login time update');
+        }
+        
+        console.log(`Updated lastLogin for user: ${email}`);
+        return true;
+    } catch (err) {
+        console.error('updateLoginTime error:', err);
+        throw err;
+    }
+};
+
+
 //find mongodb
 const findDatabase = async (db) => {
     var collection = db.collection(collectionName);
@@ -126,8 +153,8 @@ app.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // // Remove password from response
-        // const { password: _, ...userData } = user;
+
+        await updateLoginTime(db, email);
         
         res.status(200).json({ 
             message: "Login successful",
