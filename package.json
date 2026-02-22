@@ -8,7 +8,8 @@
 		"express": "*",
 		"express-session": "*",
 		"mongodb": "^6.20.0",
-        "cookie-session": "*"
+        "cookie-session": "*",
+		"uuid":"*"
 	},
 	"scripts": {
 		"start": "node server.js"
