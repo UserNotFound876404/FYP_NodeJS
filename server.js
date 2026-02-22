@@ -1,11 +1,12 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion, HostAddress } = require('mongodb');
+const { MongoClient, ServerApiVersion, HostAddress,ObjectId  } = require('mongodb');
 const app = express();
 const url = process.env.MongoDB_URL;
 const dbName = "fyp";
 const collectionName = "users";
 const client = new MongoClient(url);
 const bodyParser = require('body-parser');
+const { v4: uuidv4 } = require('uuid');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -85,7 +86,7 @@ const findDatabase = async (db) => {
 const insertDatabase = async (db, object) => {
     try{
         var collection = db.collection(collectionName);
-        collection.insertOne(object);
+        await collection.insertOne(object);
     }catch (err) {
         console.error("insertDatabase error:", err);  // Log for debugging
         throw err;  // Re-throw so caller can handle (e.g., return 500/409)
@@ -167,6 +168,12 @@ app.post("/login", async (req, res) => {
     }
 });
 
+app.get("/updatestreak",async (req,res)=> {
+    
+
+
+})
+
 //retrieve data by id
 app.post("/data", async (req, res) => {
     try {
@@ -186,14 +193,10 @@ app.post("/data", async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-
-        // Remove password + update lastUpdate
-        const { password: _, ...userData } = user;
-        userData.lastUpdate = new Date().toISOString();
         
         res.status(200).json({ 
             message: "Profile fetched successfully",
-            user: userData 
+            user: user 
         });
 
     } catch (err) {
@@ -223,8 +226,9 @@ app.post("/createAccount", async (req, res, next) => {
         if (existingUsers.length > 0) {
             return res.status(409).json({ error: "Account with this email already exists" });
         }
-
+    
         let newObject = {
+            uid: uuidv4(), 
             name: name.trim(),
             email: normalizedEmail,
             password: password,     // Hash before saving in production!
@@ -356,39 +360,6 @@ app.delete("/medicine/:email", async (req, res) => {
 //     }
 // })
 
-//search
-//curl "localhost:8099/api/search/userId/12345"
-// app.get("/api/search/userId/:userId", async (req, res, next) => {
-//         const db = client.db(dbName);
-//         try {
-//             const q = {
-//                 userId: req.params.userId,
-//                 // name: req.params.name,
-//                 // age: req.params.age,
-//                 // weight: req.params.weight,
-//                 // height: req.params.height,
-//                 // medicine: req.params.medicine,
-//                 // gender: req.params.gender.toUpperCase()
-//             };
-
-//             Object.keys(q).forEach((k) => {
-//                 const v = q[k];
-//                 if (v == null || String(v).trim() === '') {
-//                     delete q[k];
-//                 }
-//             });
-
-//             const results = await searchDatabase(db, q);
-//             res.status(200).type("json").send(results);
-//         } catch (err) {
-//             console.error('Search error:', err);
-//             res.status(500).json({ error: 'Internal server error' });
-//         }
-// });
 
 //port
 app.listen(process.env.PORT);
-
-
-
-
