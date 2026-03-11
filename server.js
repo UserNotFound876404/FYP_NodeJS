@@ -339,88 +339,85 @@ app.delete("/medicine/:email", async (req, res) => {
     }
 });
 
+//finishmeds endpoint
 app.get("/finishMeds", async (req, res) => {
-  try {
-    const { uid, medicineName, medicineTime } = req.query;
-    if (!uid || !medicineName || !medicineTime) {
-      return res.status(400).json({ error: "uid, medicineName, and medicineTime required" });
+    try {
+        const { uid, medicineName, medicineTime } = req.query;
+        if (!uid || !medicineName || !medicineTime) {
+            return res.status(400).json({ error: "uid, medicineName, and medicineTime required" });
+        }
+
+        const db = client.db(dbName);
+        const user = await db.collection(collectionName).findOne({ uid });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // SERVER TIME
+        const hkNow = new Date().toLocaleString("en-US", { timeZone: "Asia/Hong_Kong" });
+        const today = new Date().toISOString().split("T")[0];
+
+        // Find medicine + validate medicineTime exists
+        const medicine = user.medicine?.find(m => m.name === medicineName);
+        if (!medicine?.time?.length) {
+            return res.status(404).json({ error: "Medicine not found" });
+        }
+        if (!medicine.time.includes(medicineTime)) {
+            return res.status(400).json({ error: `medicineTime "${medicineTime}" not in schedule for ${medicineName}` });
+        }
+
+        // 30min check + streak logic (uses provided medicineTime directly)
+        const hkDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Hong_Kong" }); //
+        const scheduledTime = new Date(hkDate + "T" + medicineTime + ":00+08:00");
+        const isWithin30Min = Math.abs(Date.now() - scheduledTime) <= 30 * 60 * 1000;
+        const status = isWithin30Min ? "taken" : "missed";
+
+        // Update history
+        const streakHistory = user.streakHistory || [];
+        const todayEntry = streakHistory.find(e => e.date === today) || {
+            date: today,
+            medicines: [],
+            completed: false
+        };
+        if (!streakHistory.find(e => e.date === today)) {
+            streakHistory.unshift(todayEntry);
+        }
+
+        todayEntry.medicines = todayEntry.medicines
+            .filter(d => !(d.name === medicineName && d.time === medicineTime))
+            .concat([{
+                name: medicineName,
+                time: medicineTime,
+                status,
+                timestamp: hkNow,
+                within30Min: isWithin30Min
+            }]);
+
+        // Streak calculation
+        const allDoses = user.medicine.flatMap(m => m.time.map(t => ({ name: m.name, time: t })));
+        const takenToday = todayEntry.medicines.filter(d => d.status === "taken" && d.within30Min).length;
+        todayEntry.completed = takenToday === allDoses.length;
+        const newStreak = todayEntry.completed && streakHistory[1]?.completed
+            ? (user.streak || 0) + 1
+            : todayEntry.completed ? 1 : 0;
+
+        // ONE UPDATE
+        await db.collection(collectionName).updateOne(
+            { uid },
+            { $set: { streakHistory, streak: newStreak, lastUpdate: hkNow } }
+        );
+
+        res.json({
+            status: status,
+            scheduledTime: medicineTime,
+            streak: newStreak,
+            completed: todayEntry.completed
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: "Server error" });
     }
-
-    const db = client.db(dbName);
-    const user = await db.collection(collectionName).findOne({ uid });
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // SERVER TIME
-    const hkNow = new Date().toLocaleString("en-US", { timeZone: "Asia/Hong_Kong" });
-    const today = new Date().toISOString().split("T")[0];
-
-    // Find medicine + validate medicineTime exists
-    const medicine = user.medicine?.find(m => m.name === medicineName);
-    if (!medicine?.time?.length) {
-      return res.status(404).json({ error: "Medicine not found" });
-    }
-    if (!medicine.time.includes(medicineTime)) {
-      return res.status(400).json({ error: `medicineTime "${medicineTime}" not in schedule for ${medicineName}` });
-    }
-
-    // 30min check + streak logic (uses provided medicineTime directly)
-    const scheduledTime = new Date(
-      new Date().toLocaleDateString("en-US", { timeZone: "Asia/Hong_Kong" }) +
-        " " +
-        medicineTime
-    );
-    const isWithin30Min = Math.abs(Date.now() - scheduledTime) <= 30 * 60 * 1000;
-    const status = isWithin30Min ? "taken" : "missed";
-
-    // Update history
-    const streakHistory = user.streakHistory || [];
-    const todayEntry = streakHistory.find(e => e.date === today) || {
-      date: today,
-      medicines: [],
-      completed: false
-    };
-    if (!streakHistory.find(e => e.date === today)) {
-      streakHistory.unshift(todayEntry);
-    }
-
-    todayEntry.medicines = todayEntry.medicines
-      .filter(d => !(d.name === medicineName && d.time === medicineTime))
-      .concat([{
-        name: medicineName,
-        time: medicineTime,
-        status,
-        timestamp: hkNow,
-        within30Min: isWithin30Min
-      }]);
-
-    // Streak calculation
-    const allDoses = user.medicine.flatMap(m => m.time.map(t => ({ name: m.name, time: t })));
-    const takenToday = todayEntry.medicines.filter(d => d.status === "taken" && d.within30Min).length;
-    todayEntry.completed = takenToday === allDoses.length;
-    const newStreak = todayEntry.completed && streakHistory[1]?.completed
-      ? (user.streak || 0) + 1
-      : todayEntry.completed ? 1 : 0;
-
-    // ONE UPDATE
-    await db.collection(collectionName).updateOne(
-      { uid },
-      { $set: { streakHistory, streak: newStreak, lastUpdate: hkNow } }
-    );
-
-    res.json({
-      status: status,
-      scheduledTime: medicineTime,
-      streak: newStreak,
-      completed: todayEntry.completed
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: "Server error" });
-  }
 });
-
 //delete
 //curl -X DELETE "localhost:8099/api/delete/userId/11111"
 // app.delete("/api/delete/userId/:userId", async (req, res, next) => {
@@ -518,4 +515,5 @@ app.get("/debug/deleteMedicine", async (req, res) => {
 
 //port
 app.listen(process.env.PORT);
+
 
