@@ -34,10 +34,6 @@ app.use((req, res, next) => {
 const searchDatabase = async (db, query) => {
     try {
         const collection = db.collection(collectionName);
-
-        // Ensure query is an object; if empty, use {}
-        //const q = (query && typeof query === 'object' && Object.keys(query).length) ? query : {};
-
         const cursor = await collection.find(query);
         const results = await cursor.toArray();
         return results;
@@ -165,8 +161,6 @@ app.post("/login", async (req, res,next) => {
         if (user.password !== password) {  // Currently plain text comparison
             return res.status(401).json({ error: "Invalid credentials" });
         }
-
-
         await updateLoginTime(db, email);
 
         res.status(200).json({
@@ -189,10 +183,7 @@ app.post("/data", async (req, res,next) => {
         if (!email || !email.includes('@')) {
             return res.status(400).json({ error: "Valid email required in body" });
         }
-
         const db = client.db(dbName);
-
-        // ✅ Find user by email (EXACTLY like your login endpoint)
         const users = await searchDatabase(db, { email: email.toLowerCase() });
         const user = users[0];
 
@@ -229,6 +220,7 @@ app.post("/createAccount", async (req, res, next) => {
         // Check if email already exists (using your existing searchDatabase)
         const existingUsers = await searchDatabase(db, { email: normalizedEmail });
         if (existingUsers.length > 0) {
+            console.log("Same email exits:" + existingUsers);
             return res.status(409).json({ error: "Account with this email already exists" });
         }
         const uid = uuidv4();
@@ -244,10 +236,8 @@ app.post("/createAccount", async (req, res, next) => {
             gender: gender.toUpperCase().trim(),
             lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
         };
-
         await insertDatabase(db, newObject);
         await insertReportDatabase(db, {uid: uid})
-
         res.status(201).json({ message: "Account created successfully" });
     } catch (err) {
         console.error("Error creating account:", err);
@@ -545,5 +535,3 @@ app.get("/debug/deleteMedicine", async (req, res) => {
 
 //port
 app.listen(process.env.PORT || 8099);
-
-
