@@ -1,5 +1,5 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion, HostAddress,ObjectId  } = require('mongodb');
+const { MongoClient, ServerApiVersion, HostAddress, ObjectId } = require('mongodb');
 const app = express();
 const url = process.env.MongoDB_URL;
 const dbName = "fyp";
@@ -51,20 +51,20 @@ const updateLoginTime = async (db, email) => {
     try {
         const collection = db.collection(collectionName);
         const updateTime = new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' });
-        
+
         const result = await collection.updateOne(
             { email: email.toLowerCase() },
-            { 
-                $set: { 
+            {
+                $set: {
                     lastLogin: updateTime
                 }
             }
         );
-        
+
         if (result.modifiedCount === 0) {
             throw new Error('User not found for login time update');
         }
-        
+
         console.log(`Updated lastLogin for user: ${email}`);
         return true;
     } catch (err) {
@@ -84,10 +84,20 @@ const findDatabase = async (db) => {
 
 //insert mongodb
 const insertDatabase = async (db, object) => {
-    try{
+    try {
         var collection = db.collection(collectionName);
         await collection.insertOne(object);
-    }catch (err) {
+    } catch (err) {
+        console.error("insertDatabase error:", err);  // Log for debugging
+        throw err;  // Re-throw so caller can handle (e.g., return 500/409)
+    }
+}
+//insert health report
+const insertReportDatabase = async (db, object) => {
+    try {
+        var collection = db.collection("healthReport");
+        await collection.insertOne(object);
+    } catch (err) {
         console.error("insertDatabase error:", err);  // Log for debugging
         throw err;  // Re-throw so caller can handle (e.g., return 500/409)
     }
@@ -104,6 +114,8 @@ const deleteDatabase = async (db, medicineName) => {
     var collection = db.collection(collectionName);
     collection.deleteOne({ "name": medicineName });
 }
+
+//find HealthReport Database
 
 app.get('/', (req, res, next) => {
     res.redirect("/home");
@@ -128,26 +140,26 @@ app.get("/api", async (req, res, next) => {
 });
 
 //curl -X POST http://localhost:8099/login -H "Content-Type: application/json" -d "{\"email\":\"tom@example.com\",\"password\":\"secret123\"}"
-app.post("/login", async (req, res) => {
+app.post("/login", async (req, res,next) => {
     try {
         const { email, password } = req.body;
-        
+
         // Validation
         if (!email || !password) {
             return res.status(400).json({ error: "Email and password required" });
         }
 
         const db = client.db(dbName);
-        
+
         // Find user by email (using your searchDatabase)
         const users = await searchDatabase(db, { email: email.toLowerCase() });
         const user = users[0]; // searchDatabase returns array
-        
+
         // Check if user exists
         if (!user) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
-        
+
         // TODO: In production, compare hashed password:
         // if (user.password !== password) {
         if (user.password !== password) {  // Currently plain text comparison
@@ -156,8 +168,8 @@ app.post("/login", async (req, res) => {
 
 
         await updateLoginTime(db, email);
-        
-        res.status(200).json({ 
+
+        res.status(200).json({
             message: "Login successful",
             user: user
         });
@@ -168,35 +180,29 @@ app.post("/login", async (req, res) => {
     }
 });
 
-app.get("/updatestreak",async (req,res)=> {
-    
-
-
-})
-
 //retrieve data by id
-app.post("/data", async (req, res) => {
+app.post("/data", async (req, res,next) => {
     try {
-        const { email } = req.body;  // ✅ Email from request body
-        
+        const { email } = req.body;
+
         // Validation
         if (!email || !email.includes('@')) {
             return res.status(400).json({ error: "Valid email required in body" });
         }
 
         const db = client.db(dbName);
-        
+
         // ✅ Find user by email (EXACTLY like your login endpoint)
         const users = await searchDatabase(db, { email: email.toLowerCase() });
         const user = users[0];
-        
+
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-        
-        res.status(200).json({ 
+
+        res.status(200).json({
             message: "Profile fetched successfully",
-            user: user 
+            user: user
         });
 
     } catch (err) {
@@ -204,7 +210,6 @@ app.post("/data", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
-
 
 
 //create account
@@ -220,26 +225,29 @@ app.post("/createAccount", async (req, res, next) => {
         const normalizedEmail = email.toLowerCase().trim();
 
         const db = client.db(dbName);
-        
+
         // Check if email already exists (using your existing searchDatabase)
         const existingUsers = await searchDatabase(db, { email: normalizedEmail });
         if (existingUsers.length > 0) {
             return res.status(409).json({ error: "Account with this email already exists" });
         }
-    
+        const uid = uuidv4();
+
         let newObject = {
-            uid: uuidv4(), 
+            uid: uid,
             name: name.trim(),
             email: normalizedEmail,
             password: password,     // Hash before saving in production!
             birth: birth,           // YYYY-MM-DD
-            streak: 0,         
+            streak: 0,
             medicine: [],
             gender: gender.toUpperCase().trim(),
             lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
         };
-        
+
         await insertDatabase(db, newObject);
+        await insertReportDatabase(db, {uid: uid})
+
         res.status(201).json({ message: "Account created successfully" });
     } catch (err) {
         console.error("Error creating account:", err);
@@ -283,9 +291,9 @@ app.post("/medicine/:email", async (req, res) => {
 
         await db.collection("users").updateOne(
             { email: email },
-            { 
+            {
                 $push: { medicine: newMedicine },
-                $set: { 
+                $set: {
                     lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
                 }
             }
@@ -304,7 +312,7 @@ app.delete("/medicine/:email", async (req, res) => {
         const db = client.db(dbName);
         const email = req.params.email;
         const { medicineName } = req.body;  // medicineName from body (secure)
-        
+
         if (!medicineName) {
             return res.status(400).json({ error: "medicineName required in body" });
         }
@@ -317,9 +325,9 @@ app.delete("/medicine/:email", async (req, res) => {
         // Delete medicine by name using $pull (no insert logic)
         const result = await db.collection("users").updateOne(
             { email: email },
-            { 
-                $pull: { medicine: { name: medicineName } }, 
-                $set: { 
+            {
+                $pull: { medicine: { name: medicineName } },
+                $set: {
                     lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
                 }
             }
@@ -329,9 +337,9 @@ app.delete("/medicine/:email", async (req, res) => {
             return res.status(404).json({ error: "Medicine not found or already deleted" });
         }
 
-        res.json({ 
+        res.json({
             message: "Medicine deleted successfully",
-            deletedCount: result.modifiedCount 
+            deletedCount: result.modifiedCount
         });
     } catch (err) {
         console.error("Error:", err);
@@ -339,7 +347,7 @@ app.delete("/medicine/:email", async (req, res) => {
     }
 });
 
-//finishmeds endpoint
+//curl "http://localhost:8099/finishMeds?uid=YOUR_UID&medicineName=123"
 app.get("/finishMeds", async (req, res) => {
     try {
         const { uid, medicineName, medicineTime } = req.query;
@@ -418,6 +426,28 @@ app.get("/finishMeds", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
+
+
+app.get("/healthReport/:uid", async (req, res) => {
+    try {
+        const db = client.db(dbName);
+        const uid = req.params.uid;
+
+        const report = await db.collection("healthReport").findOne({ uid: uid });
+
+        if (!report) {
+            return res.status(404).json({ error: "Report not found" });
+        }
+
+        res.status(200).json(report);
+
+    } catch (err) {
+        console.error("Data fetch error:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+})
+
+
 //delete
 //curl -X DELETE "localhost:8099/api/delete/userId/11111"
 // app.delete("/api/delete/userId/:userId", async (req, res, next) => {
@@ -454,7 +484,7 @@ app.get("/debug/deleteMedicine", async (req, res) => {
     try {
         const { uid, medicineName } = req.query;
         console.log(`🗑️ DEBUG DELETE: uid=${uid}, medicine=${medicineName}`);
-        
+
         if (!uid || !medicineName) {
             return res.status(400).json({ error: "uid and medicineName required" });
         }
@@ -486,8 +516,8 @@ app.get("/debug/deleteMedicine", async (req, res) => {
 
         await db.collection(collectionName).updateOne(
             { uid: uid },
-            { 
-                $set: { 
+            {
+                $set: {
                     streakHistory: cleanedHistory,
                     streak: newStreak,
                     lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
@@ -496,7 +526,7 @@ app.get("/debug/deleteMedicine", async (req, res) => {
         );
 
         console.log(` AFTER: Medicines left=${updatedUser.medicine?.length - 1 || 0}, New streak=${newStreak}`);
-        
+
         res.json({
             debug: true,
             message: `🗑️ "${medicineName}" DELETED from medicine[] + streakHistory`,
@@ -514,6 +544,4 @@ app.get("/debug/deleteMedicine", async (req, res) => {
 
 
 //port
-app.listen(process.env.PORT);
-
-
+app.listen(process.env.PORT || 8099);
