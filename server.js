@@ -8,6 +8,30 @@ const client = new MongoClient(url);
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 
+const getHKT = () => {
+  return new Date().toLocaleString("en-US", { 
+    timeZone: "Asia/Hong_Kong",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false 
+  });
+};
+
+const getHKTDateOnly = () => {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Hong_Kong" }); // YYYY-MM-DD
+};
+
+// ISO timestamp in HKT
+const getHKTISO = () => {
+  const hktDate = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Hong_Kong" });
+  return new Date(hktDate + "T00:00:00+08:00").toISOString();
+};
+
+
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -46,7 +70,7 @@ const searchDatabase = async (db, query) => {
 const updateLoginTime = async (db, email) => {
     try {
         const collection = db.collection(collectionName);
-        const updateTime = new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' });
+        const updateTime = getHKT();
 
         const result = await collection.updateOne(
             { email: email.toLowerCase() },
@@ -234,7 +258,7 @@ app.post("/createAccount", async (req, res, next) => {
             streak: 0,
             medicine: [],
             gender: gender.toUpperCase().trim(),
-            lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
+            lastUpdate: getHKT()
         };
         await insertDatabase(db, newObject);
         await insertReportDatabase(db, {uid: uid})
@@ -284,7 +308,7 @@ app.post("/medicine/:email", async (req, res) => {
             {
                 $push: { medicine: newMedicine },
                 $set: {
-                    lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
+                    lastUpdate: getHKT()
                 }
             }
         );
@@ -318,7 +342,7 @@ app.delete("/medicine/:email", async (req, res) => {
             {
                 $pull: { medicine: { name: medicineName } },
                 $set: {
-                    lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
+                    lastUpdate: getHKT()
                 }
             }
         );
@@ -352,8 +376,8 @@ app.get("/finishMeds", async (req, res) => {
         }
 
         // SERVER TIME
-        const hkNow = new Date().toLocaleString("en-US", { timeZone: "Asia/Hong_Kong" });
-        const today = new Date().toISOString().split("T")[0];
+        const hkNow = getHKT(); 
+        const today = getHKTDateOnly();
 
         // Find medicine + validate medicineTime exists
         const medicine = user.medicine?.find(m => m.name === medicineName);
@@ -365,7 +389,7 @@ app.get("/finishMeds", async (req, res) => {
         }
 
         // 30min check + streak logic (uses provided medicineTime directly)
-        const hkDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Hong_Kong" }); //
+        const hkDate =  getHKTDateOnly();
         const scheduledTime = new Date(hkDate + "T" + medicineTime + ":00+08:00");
         const isWithin30Min = Math.abs(Date.now() - scheduledTime) <= 30 * 60 * 1000;
         const status = isWithin30Min ? "taken" : "missed";
@@ -415,6 +439,64 @@ app.get("/finishMeds", async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: "Server error" });
     }
+});
+
+//health report
+
+app.post("/saveHealthData/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const { 
+      weight, 
+      height, 
+      bloodGlucose, 
+      systolic, 
+      diastolic, 
+      heartRate, 
+      notes 
+    } = req.body;
+    
+    const db = client.db(dbName);
+    const today = getHKTDateOnly();
+
+    const arrayData = {};
+    
+    // Build array entries conditionally
+    if (weight) arrayData.weight = { date: today, weight: parseFloat(weight) };
+    if (bloodGlucose) arrayData.bloodGlucose = { date: today, value: parseFloat(bloodGlucose) };
+    if (systolic) arrayData.systolic = { date: today, value: parseInt(systolic) };
+    if (diastolic) arrayData.diastolic = { date: today, value: parseInt(diastolic) };
+    if (heartRate) arrayData.heartRate = { date: today, value: parseInt(heartRate) };
+
+    const updateObj = {
+      $push: arrayData, 
+      $set: {
+        height: height ? parseFloat(height) : undefined,
+        lastHealthUpdate: getHKT()
+      }
+    };
+
+    // Remove undefined fields
+    Object.keys(updateObj.$set).forEach(key => 
+      updateObj.$set[key] === undefined && delete updateObj.$set[key]
+    );
+
+    const result = await db.collection("healthReport").updateOne(
+      { uid },
+      updateObj,
+      { upsert: true }
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Health data saved", 
+      dateAdded: today,
+      savedFields: Object.keys(arrayData)
+    });
+  } catch (err) {
+    console.error("saveHealthData error:", err);
+    res.status(500).json({ error: "Server error: " + err.message });
+  }
 });
 
 
@@ -509,8 +591,7 @@ app.get("/debug/deleteMedicine", async (req, res) => {
             {
                 $set: {
                     streakHistory: cleanedHistory,
-                    streak: newStreak,
-                    lastUpdate: new Date().toLocaleString("en-US", { timeZone: 'Asia/Hong_Kong' })
+                    streak: newStreak
                 }
             }
         );
