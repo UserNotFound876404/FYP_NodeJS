@@ -462,7 +462,7 @@ app.post("/saveHealthData/:uid", async (req, res) => {
     const arrayData = {};
     
     // Build array entries conditionally
-    if (weight) arrayData.weight = { date: today, weight: parseFloat(weight) };
+    if (weight) arrayData.weight = { date: today, value: parseFloat(weight) };
     if (bloodGlucose) arrayData.bloodGlucose = { date: today, value: parseFloat(bloodGlucose) };
     if (systolic) arrayData.systolic = { date: today, value: parseInt(systolic) };
     if (diastolic) arrayData.diastolic = { date: today, value: parseInt(diastolic) };
@@ -616,3 +616,4 @@ app.get("/debug/deleteMedicine", async (req, res) => {
 
 //port
 app.listen(process.env.PORT || 8099);
+
