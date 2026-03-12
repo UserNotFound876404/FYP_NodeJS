@@ -229,8 +229,6 @@ app.post("/createAccount", async (req, res, next) => {
         // Check if email already exists (using your existing searchDatabase)
         const existingUsers = await searchDatabase(db, { email: normalizedEmail });
         if (existingUsers.length > 0) {
-            console.log("Received email: "+normalizedEmail);
-            console.log("Same email exits:" + existingUsers.email);
             return res.status(409).json({ error: "Account with this email already exists" });
         }
         const uid = uuidv4();
@@ -547,4 +545,5 @@ app.get("/debug/deleteMedicine", async (req, res) => {
 
 //port
 app.listen(process.env.PORT || 8099);
+
 
