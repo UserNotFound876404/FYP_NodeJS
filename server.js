@@ -36,7 +36,7 @@ const searchDatabase = async (db, query) => {
         const collection = db.collection(collectionName);
 
         // Ensure query is an object; if empty, use {}
-        const q = (query && typeof query === 'object' && Object.keys(query).length) ? query : {};
+        //const q = (query && typeof query === 'object' && Object.keys(query).length) ? query : {};
 
         const cursor = await collection.find(query);
         const results = await cursor.toArray();
@@ -228,7 +228,8 @@ app.post("/createAccount", async (req, res, next) => {
 
         // Check if email already exists (using your existing searchDatabase)
         const existingUsers = await searchDatabase(db, { email: normalizedEmail });
-        if (existingUsers) {
+        if (existingUsers.length > 0) {
+            console.log("Same email exits:" + existingUsers);
             return res.status(409).json({ error: "Account with this email already exists" });
         }
         const uid = uuidv4();
