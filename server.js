@@ -291,20 +291,20 @@ app.post("/createAccount", async (req, res, next) => {
 // })
 
 //update medicine 
-app.post("/medicine/:email", async (req, res) => {
+app.post("/medicine/:uid", async (req, res) => {
     try {
         const db = client.db(dbName);
-        const email = req.params.email;
+        const uid = req.params.uid;
 
         const newMedicine = req.body;
 
-        const user = await db.collection("users").findOne({ email: email });
+        const user = await db.collection("users").findOne({ uid: uid });
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
         await db.collection("users").updateOne(
-            { email: email },
+            { uid: uid },
             {
                 $push: { medicine: newMedicine },
                 $set: {
@@ -321,24 +321,24 @@ app.post("/medicine/:email", async (req, res) => {
 });
 
 //delete the medicine object using the name attribute in mongodb
-app.delete("/medicine/:email", async (req, res) => {
+app.delete("/medicine/:uid", async (req, res) => {
     try {
         const db = client.db(dbName);
-        const email = req.params.email;
+        const uid = req.params.uid;
         const { medicineName } = req.body;  // medicineName from body (secure)
 
         if (!medicineName) {
             return res.status(400).json({ error: "medicineName required in body" });
         }
 
-        const user = await db.collection("users").findOne({ email: email });
+        const user = await db.collection("users").findOne({ uid: uid });
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
         // Delete medicine by name using $pull (no insert logic)
         const result = await db.collection("users").updateOne(
-            { email: email },
+            { uid: uid },
             {
                 $pull: { medicine: { name: medicineName } },
                 $set: {
