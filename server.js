@@ -361,7 +361,7 @@ app.delete("/medicine/:email", async (req, res) => {
     }
 });
 
-//curl "http://localhost:8099/finishMeds?uid=YOUR_UID&medicineName=123"
+//3-19-2026 modded
 app.get("/finishMeds", async (req, res) => {
     try {
         const { uid, medicineName, medicineTime } = req.query;
@@ -420,9 +420,10 @@ app.get("/finishMeds", async (req, res) => {
         const takenToday = todayEntry.medicines.filter(d => d.status === "taken" && d.within30Min).length;
         todayEntry.completed = takenToday === allDoses.length;
         const newStreak = todayEntry.completed && streakHistory[1]?.completed
-            ? (user.streak || 0) + 1
-            : todayEntry.completed ? 1 : 0;
-
+            ? user.streak + 1
+            : 0;
+    //^ todayEntry.completed ? 1 : 0;
+      
         // ONE UPDATE
         await db.collection(collectionName).updateOne(
             { uid },
