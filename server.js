@@ -442,6 +442,81 @@ app.get("/finishMeds", async (req, res) => {
     }
 });
 
+app.get("/missMeds", async (req, res) => {
+    try {
+        const { uid, medicineName, medicineTime } = req.query;
+        if (!uid || !medicineName || !medicineTime) {
+            return res.status(400).json({ error: "uid, medicineName, and medicineTime required" });
+        }
+
+        const db = client.db(dbName);
+        const user = await db.collection(collectionName).findOne({ uid });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // SERVER TIME (Hong Kong)
+        const hkNow = getHKT();
+        const today = getHKTDateOnly();
+
+        // Find medicine
+        const medicine = user.medicine?.find(m => m.name === medicineName);
+        if (!medicine?.time?.length) {
+            return res.status(404).json({ error: "Medicine not found" });
+        }
+        if (!medicine.time.includes(medicineTime)) {
+            return res.status(400).json({ error: `medicineTime "${medicineTime}" not in schedule for ${medicineName}` });
+        }
+
+        // ================
+        // Record as MISSED
+        // ================
+        const status = "missed";
+
+        // Update streakHistory
+        const streakHistory = user.streakHistory || [];
+        const todayEntry = streakHistory.find(e => e.date === today) || {
+            date: today,
+            medicines: [],
+            completed: false
+        };
+        if (!streakHistory.find(e => e.date === today)) {
+            streakHistory.unshift(todayEntry);
+        }
+
+        todayEntry.medicines = todayEntry.medicines
+            .filter(d => !(d.name === medicineName && d.time === medicineTime))
+            .concat([{
+                name: medicineName,
+                time: medicineTime,
+                status,
+                timestamp: hkNow,
+                within30Min: false   // explicitly not within 30 min
+            }]);
+
+        // Recalculate streak
+        const allDoses = user.medicine.flatMap(m => m.time.map(t => ({ name: m.name, time: t })));
+        const takenToday = todayEntry.medicines.filter(d => d.status === "taken" && d.within30Min).length;
+        todayEntry.completed = takenToday === allDoses.length;
+        const newStreak = todayEntry.completed ? (user.streak || 0) + 1 : 0;
+
+        await db.collection(collectionName).updateOne(
+            { uid },
+            { $set: { streakHistory, streak: newStreak, lastUpdate: hkNow } }
+        );
+
+        res.json({
+            status: "missed",
+            scheduledTime: medicineTime,
+            streak: newStreak,
+            completed: todayEntry.completed
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 //health report
 
 app.post("/saveHealthData/:uid", async (req, res) => {
