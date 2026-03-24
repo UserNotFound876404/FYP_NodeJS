@@ -320,15 +320,16 @@ app.post("/medicine/:uid", async (req, res) => {
     }
 });
 
+
 //delete the medicine object using the name attribute in mongodb
-app.delete("/medicine/:uid", async (req, res) => {
+// DELETE: remove one medicine by name
+app.delete("/managemedicine/:uid/:medicineName", async (req, res) => {
     try {
         const db = client.db(dbName);
-        const uid = req.params.uid;
-        const { medicineName } = req.body;  // medicineName from body (secure)
+        const { uid, medicineName } = req.params;
 
-        if (!medicineName) {
-            return res.status(400).json({ error: "medicineName required in body" });
+        if (!uid || !medicineName) {
+            return res.status(400).json({ error: "uid and medicineName required in URL" });
         }
 
         const user = await db.collection("users").findOne({ uid: uid });
@@ -336,17 +337,17 @@ app.delete("/medicine/:uid", async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        // Delete medicine by name using $pull (no insert logic)
         const result = await db.collection("users").updateOne(
             { uid: uid },
             {
                 $pull: { medicine: { name: medicineName } },
-                $set: {
-                    lastUpdate: getHKT()
-                }
+                $set: { lastUpdate: getHKT() }
             }
         );
 
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
         if (result.modifiedCount === 0) {
             return res.status(404).json({ error: "Medicine not found or already deleted" });
         }
@@ -356,7 +357,7 @@ app.delete("/medicine/:uid", async (req, res) => {
             deletedCount: result.modifiedCount
         });
     } catch (err) {
-        console.error("Error:", err);
+        console.error("Error deleting medicine:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
