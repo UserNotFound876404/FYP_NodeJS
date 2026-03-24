@@ -45,16 +45,6 @@ app.use((req, res, next) => {
     next();
 })
 
-
-// const SECRETKEY = 'secretkey';
-
-//cookies
-// const session = require('cookie-session');
-// app.use(session({
-//     name: 'loginSession',
-//     keys: [SECRETKEY]
-// }));
-
 const searchDatabase = async (db, query) => {
     try {
         const collection = db.collection(collectionName);
