@@ -71,10 +71,6 @@ const updateLoginTime = async (db, email) => {
             }
         );
 
-        if (result.modifiedCount === 0) {
-            throw new Error('User not found for login time update');
-        }
-
         console.log(`Updated lastLogin for user: ${email}`);
         return true;
     } catch (err) {
