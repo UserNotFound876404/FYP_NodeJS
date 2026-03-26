@@ -525,7 +525,7 @@ app.post("/saveHealthData/:uid", async (req, res) => {
     const { 
       weight, 
       height, 
-      bloodGlucose, 
+      glucose, 
       systolic, 
       diastolic, 
       heartRate, 
@@ -539,7 +539,7 @@ app.post("/saveHealthData/:uid", async (req, res) => {
     
     // Build array entries conditionally
     if (weight) arrayData.weight = { date: today, value: parseFloat(weight) };
-    if (bloodGlucose) arrayData.bloodGlucose = { date: today, value: parseFloat(bloodGlucose) };
+    if (glucose) arrayData.glucose = { date: today, value: parseFloat(glucose) };
     if (systolic) arrayData.systolic = { date: today, value: parseInt(systolic) };
     if (diastolic) arrayData.diastolic = { date: today, value: parseInt(diastolic) };
     if (heartRate) arrayData.heartRate = { date: today, value: parseInt(heartRate) };
