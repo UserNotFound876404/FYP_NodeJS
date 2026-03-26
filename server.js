@@ -405,6 +405,19 @@ app.get("/finishMeds", async (req, res) => {
         // Streak calculation
         const allDoses = user.medicine.flatMap(m => m.time.map(t => ({ name: m.name, time: t })));
         const takenToday = todayEntry.medicines.filter(d => d.status === "taken" && d.within30Min).length;
+
+        if (takenToday < allDoses.length) {
+          const takenKeys = new Set(todayEntry.medicines
+            .filter(d => d.status === "taken" && d.within30Min)
+            .map(d => `${d.name}_${d.time}`)
+            );
+
+          const missing = allDoses.filter(d => !takenKeys.has(`${d.name}_${d.time}`));
+          console.warn("Missing or incomplete doses today:", missing);
+        }
+
+
+      
         todayEntry.completed = takenToday === allDoses.length;
         const newStreak = todayEntry.completed 
           ? (user.streak || 0) + 1 
