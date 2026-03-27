@@ -518,63 +518,69 @@ app.get("/missMeds", async (req, res) => {
 });
 
 //health report
-
 app.post("/saveHealthData/:uid", async (req, res) => {
   try {
     const { uid } = req.params;
-    const { 
-      weight, 
-      height, 
-      glucose, 
-      systolic, 
-      diastolic, 
-      heartRate, 
-      notes 
-    } = req.body;
+    const { weight, height, glucose, systolic, diastolic, heartRate } = req.body;
     
     const db = client.db(dbName);
     const today = getHKTDateOnly();
 
-    const arrayData = {};
-    
-    // Build array entries conditionally
-    if (weight) arrayData.weight = { date: today, value: parseFloat(weight) };
-    if (glucose) arrayData.glucose = { date: today, value: parseFloat(glucose) };
-    if (systolic) arrayData.systolic = { date: today, value: parseInt(systolic) };
-    if (diastolic) arrayData.diastolic = { date: today, value: parseInt(diastolic) };
-    if (heartRate) arrayData.heartRate = { date: today, value: parseInt(heartRate) };
-
-    const updateObj = {
-      $push: arrayData, 
-      $set: {
-        height: height ? parseFloat(height) : undefined,
-        lastHealthUpdate: getHKT()
-      }
+    // 1. Prepare the new data points
+    const newEntries = {
+      weight: weight ? { date: today, value: parseFloat(weight) } : null,
+      glucose: glucose ? { date: today, value: parseFloat(glucose) } : null,
+      systolic: systolic ? { date: today, value: parseInt(systolic) } : null,
+      diastolic: diastolic ? { date: today, value: parseInt(diastolic) } : null,
+      heartRate: heartRate ? { date: today, value: parseInt(heartRate) } : null,
     };
 
-    // Remove undefined fields
-    Object.keys(updateObj.$set).forEach(key => 
-      updateObj.$set[key] === undefined && delete updateObj.$set[key]
-    );
+    // 2. Build the Update Pipeline
+    // We use $filter to remove existing entries with today's date, then $concatArrays to add the new one
+    const pipeline = [
+      {
+        $set: {
+          uid: uid, // Ensure uid exists on upsert
+          lastHealthUpdate: getHKT(),
+          height: height ? parseFloat(height) : "$height", // Keep old height if not provided
+          // Repeat this logic for every array field
+          ...Object.keys(newEntries).reduce((acc, key) => {
+            if (newEntries[key]) {
+              acc[key] = {
+                $concatArrays: [
+                  {
+                    $filter: {
+                      input: { $ifNull: [`$${key}`, []] },
+                      as: "item",
+                      cond: { $ne: ["$$item.date", today] }
+                    }
+                  },
+                  [newEntries[key]]
+                ]
+              };
+            }
+            return acc;
+          }, {})
+        }
+      }
+    ];
 
     const result = await db.collection("healthReport").updateOne(
       { uid },
-      updateObj,
+      pipeline,
       { upsert: true }
     );
 
     res.json({ 
       success: true, 
-      message: "Health data saved", 
-      dateAdded: today,
-      savedFields: Object.keys(arrayData)
+      message: "Health data updated (one entry per day enforced)", 
+      date: today 
     });
   } catch (err) {
     console.error("saveHealthData error:", err);
     res.status(500).json({ error: "Server error: " + err.message });
   }
 });
-
 
 app.get("/healthReport/:uid", async (req, res) => {
     try {
