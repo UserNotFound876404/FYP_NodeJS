@@ -421,7 +421,7 @@ app.get("/finishMeds", async (req, res) => {
         todayEntry.completed = takenToday === allDoses.length;
         const newStreak = todayEntry.completed 
           ? (user.streak || 0) + 1 
-          : 0;
+          : user.streak;
     //^ todayEntry.completed ? 1 : 0;
       
         // ONE UPDATE
