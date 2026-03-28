@@ -239,12 +239,13 @@ app.post("/createAccount", async (req, res, next) => {
             uid: uid,
             name: name.trim(),
             email: normalizedEmail,
-            password: password,     // Hash before saving in production!
+            password: password,    
             birth: birth,           // YYYY-MM-DD
             streak: 0,
             medicine: [],
             gender: gender.toUpperCase().trim(),
-            lastUpdate: getHKT()
+            lastUpdate: getHKT(),
+            streakHistory: []
         };
         await insertDatabase(db, newObject);
         await insertReportDatabase(db, {uid: uid})
