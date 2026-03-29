@@ -499,7 +499,7 @@ app.get("/missMeds", async (req, res) => {
         const allDoses = user.medicine.flatMap(m => m.time.map(t => ({ name: m.name, time: t })));
         const takenToday = todayEntry.medicines.filter(d => d.status === "taken" && d.within30Min).length;
         todayEntry.completed = takenToday === allDoses.length;
-        const newStreak = todayEntry.completed ? (user.streak || 0) + 1 : 0;
+        const newStreak = todayEntry.completed ? (user.streak || 0) + 1 : user.streak;
 
         await db.collection(collectionName).updateOne(
             { uid },
