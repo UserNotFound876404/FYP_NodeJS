@@ -349,7 +349,6 @@ app.delete("/managemedicine/:uid/:medicineName", async (req, res) => {
     }
 });
 
-//3-19-2026 modded
 app.get("/finishMeds", async (req, res) => {
     try {
         const { uid, medicineName, medicineTime } = req.query;
@@ -366,6 +365,7 @@ app.get("/finishMeds", async (req, res) => {
         // SERVER TIME
         const hkNow = getHKT(); 
         const today = getHKTDateOnly();
+        const todayDateObj = getHKT(); // Full Date object for day-of-week check
 
         // Find medicine + validate medicineTime exists
         const medicine = user.medicine?.find(m => m.name === medicineName);
@@ -376,23 +376,41 @@ app.get("/finishMeds", async (req, res) => {
             return res.status(400).json({ error: `medicineTime "${medicineTime}" not in schedule for ${medicineName}` });
         }
 
-        // 30min check + streak logic (uses provided medicineTime directly)
-        const hkDate =  getHKTDateOnly();
+        //CHECK IF MEDICINE IS DUE TODAY (Daily + Weekly support)
+        const dayOfWeek = todayDateObj.getDay() + 1; // 1=Sunday, 2=Monday, ..., 7=Saturday
+        const repeatDays = medicine.repeatDays || [];
+        const isWeekly = repeatDays.length > 0;
+        
+        // Daily medicines: due every day
+        // Weekly medicines: due only on selected days
+        const isDueToday = !isWeekly || repeatDays.includes(dayOfWeek);
+        
+        if (!isDueToday) {
+            return res.status(400).json({ 
+                error: `Medicine "${medicineName}" is not due today (scheduled for days: ${repeatDays.join(',')})` 
+            });
+        }
+
+        // 30min check + streak logic
+        const hkDate = getHKTDateOnly();
         const scheduledTime = new Date(hkDate + "T" + medicineTime + ":00+08:00");
         const isWithin30Min = Math.abs(Date.now() - scheduledTime) <= 30 * 60 * 1000;
         const status = isWithin30Min ? "taken" : "missed";
 
         // Update history
         const streakHistory = user.streakHistory || [];
-        const todayEntry = streakHistory.find(e => e.date === today) || {
-            date: today,
-            medicines: [],
-            completed: false
-        };
-        if (!streakHistory.find(e => e.date === today)) {
+        let todayEntry = streakHistory.find(e => e.date === today);
+        
+        if (!todayEntry) {
+            todayEntry = {
+                date: today,
+                medicines: [],
+                completed: false
+            };
             streakHistory.unshift(todayEntry);
         }
 
+        // Remove old entry for this dose (if exists) and add new one
         todayEntry.medicines = todayEntry.medicines
             .filter(d => !(d.name === medicineName && d.time === medicineTime))
             .concat([{
@@ -403,28 +421,46 @@ app.get("/finishMeds", async (req, res) => {
                 within30Min: isWithin30Min
             }]);
 
-        // Streak calculation
-        const allDoses = user.medicine.flatMap(m => m.time.map(t => ({ name: m.name, time: t })));
-        const takenToday = todayEntry.medicines.filter(d => d.status === "taken" && d.within30Min).length;
+        //STREAK CALCULATION: Only check medicines due TODAY
+        const dueToday = user.medicine.flatMap(m => {
+            const medRepeatDays = m.repeatDays || [];
+            const medIsWeekly = medRepeatDays.length > 0;
+            const medDueToday = !medIsWeekly || medRepeatDays.includes(dayOfWeek);
+            
+            // Only include if due today
+            if (!medDueToday) return [];
+            
+            return m.time.map(t => ({ name: m.name, time: t }));
+        });
 
-        if (takenToday < allDoses.length) {
-          const takenKeys = new Set(todayEntry.medicines
-            .filter(d => d.status === "taken" && d.within30Min)
-            .map(d => `${d.name}_${d.time}`)
-            );
+        const takenToday = todayEntry.medicines.filter(
+            d => d.status === "taken" && d.within30Min
+        ).length;
 
-          const missing = allDoses.filter(d => !takenKeys.has(`${d.name}_${d.time}`));
-          console.warn("Missing or incomplete doses today:", missing);
+        // Check if all due doses are taken
+        const takenKeys = new Set(
+            todayEntry.medicines
+                .filter(d => d.status === "taken" && d.within30Min)
+                .map(d => `${d.name}_${d.time}`)
+        );
+
+        const missing = dueToday.filter(d => !takenKeys.has(`${d.name}_${d.time}`));
+        
+        if (missing.length > 0) {
+            console.warn("Missing or incomplete doses today:", missing);
         }
 
+        todayEntry.completed = takenToday === dueToday.length && dueToday.length > 0;
+        
+        //NO RESET: Streak only increases or stays the same
+        let newStreak = user.streak || 0;
+        
+        if (dueToday.length > 0 && todayEntry.completed) {
+            // All due medicines taken → increase streak
+            newStreak = (user.streak || 0) + 1;
+        }
+        // Otherwise: streak stays unchanged (no reset)
 
-      
-        todayEntry.completed = takenToday === allDoses.length;
-        const newStreak = todayEntry.completed 
-          ? (user.streak || 0) + 1 
-          : user.streak;
-    //^ todayEntry.completed ? 1 : 0;
-      
         // ONE UPDATE
         await db.collection(collectionName).updateOne(
             { uid },
@@ -435,10 +471,13 @@ app.get("/finishMeds", async (req, res) => {
             status: status,
             scheduledTime: medicineTime,
             streak: newStreak,
-            completed: todayEntry.completed
+            completed: todayEntry.completed,
+            dueTodayCount: dueToday.length,
+            takenCount: takenToday
         });
 
     } catch (err) {
+        console.error("Error in finishMeds:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
