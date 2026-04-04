@@ -365,7 +365,7 @@ app.get("/finishMeds", async (req, res) => {
         // SERVER TIME
         const hkNow = getHKT(); 
         const today = getHKTDateOnly();
-        const todayDateObj = getHKT(); // Full Date object for day-of-week check
+        const todayDateObj = new Date(hkNow);
 
         // Find medicine + validate medicineTime exists
         const medicine = user.medicine?.find(m => m.name === medicineName);
